@@ -1,6 +1,6 @@
 import numpy as np
-
-
+import threading
+import time
 #classe para formar as matrizes
 class Matriz():
     def __init__(self,*args):
@@ -42,6 +42,12 @@ class Matriz():
     @property
     def get_ordem_transp(self):
         return self._matriz_transposta.shape
+    
+    
+    def multiplicacao_escalar(self,k):
+        matriz_resultado = self.get_matriz 
+        matriz_resultado *= k
+        return Matriz(*matriz_resultado)        
 # #Classe que tem como objetivo conter as operações matriciais
 
 class Calculo_Matriz():
@@ -77,18 +83,57 @@ class Calculo_Matriz():
             return Matriz(*result) #retornando result como um novo objeto Matriz
         else:
             raise ValueError("Matrizes com diferentes tamanhos")
-                    
     
+    def multiplica(self,matriz1,matriz2,resultado,row_start,row_end):
+        for i in range(row_start,row_end):
+            for j in range(matriz2.get_ordem[1]):
+                resultado[i][j]= sum(matriz1.get_matriz[i][k] * matriz2.get_matriz[k][j] for k in range(matriz1.get_ordem[1]))
+    
+    def multiplica_matrizes_threads(self,matriz1,matriz2,num_threads):
+        if matriz1.get_ordem[1] != matriz2.get_ordem[0]:
+            raise ValueError("Número de colunas da primeira matriz difere do numero de linhas da segunda")
+        resultado = np.zeros((matriz1.get_ordem[0],matriz2.get_ordem[1]))
+        step = matriz1.get_ordem[0]//num_threads
         
-matriz1 = Matriz([1, 2], [4, 5])
-matriz2 = Matriz([5, 6], [7, 8])
-matriz3 = Matriz([9, 10], [11, 12])
-matriz4 = Matriz([13,14],[15,16])
-calculadora = Calculo_Matriz(matriz1,matriz2,matriz3,matriz4)
+        threads=[]
+        for i in range(num_threads):
+            row_start = i * step
+            row_end = (i+1)* step if i < num_threads -1 else matriz1.get_ordem[0]
+            thread = threading.Thread(target=self.multiplica,args=(matriz1,matriz2,resultado,row_start,row_end))
+            threads.append(thread)
+            thread.start()
+        for thread in threads:
+            thread.join()
+        
+        return Matriz(*resultado)
 
-try:
-    resultado = calculadora.sum
-    print("Soma das matrizes:")
-    print(resultado.get_matriz)
-except ValueError as e:
-    print(e)
+def criar_matriz_aleatoria():
+    return np.random.rand(500, 500)
+
+# Criar matrizes aleatórias 1000x1000
+matrizAlet1=criar_matriz_aleatoria()
+matrizAlet2 = criar_matriz_aleatoria()
+matriz1 = Matriz(*matrizAlet1)
+matriz2 = Matriz(*matrizAlet2)
+# matriz1 = Matriz([1, 2], [4, 5])
+# matriz2 = Matriz([5, 6], [7, 8])
+
+num_threads = 1  # Número de threads a serem utilizadas
+calculadora = Calculo_Matriz(matriz1,matriz2)
+inicio = time.time()
+resultado = calculadora.multiplica_matrizes_threads(matriz1, matriz2, num_threads)
+fim = time.time()
+
+
+print("Tempo de execução:", fim - inicio, "segundos")
+
+# matriz3 = Matriz([9, 10], [11, 12])
+# matriz4 = Matriz([13,14],[15,16])
+# calculadora = Calculo_Matriz(matriz1,matriz2,matriz3,matriz4)
+
+# try:
+#     resultado = calculadora.sum
+#     print("Soma das matrizes:")
+#     print(resultado.get_matriz)
+# except ValueError as e:
+#     print(e)
