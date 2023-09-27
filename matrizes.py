@@ -1,5 +1,5 @@
 import numpy as np
-import threading
+import multiprocessing
 import time
 #classe para formar as matrizes
 class Matriz():
@@ -89,26 +89,35 @@ class Calculo_Matriz():
             for j in range(matriz2.get_ordem[1]):
                 resultado[i][j]= sum(matriz1.get_matriz[i][k] * matriz2.get_matriz[k][j] for k in range(matriz1.get_ordem[1]))
     
-    def multiplica_matrizes_threads(self,matriz1,matriz2,num_threads):
+    def multiplica_matrizes_processos(self,matriz1,matriz2,num_processos):
+        '''
+            Com o uso do multiprocessing, podemos contornar as limitações do GIL, que  é o mecanismo de controle de concorrencia
+        do python, foi projetado para facilitar a programação multithreading, mas impõe algumas limitações quando envolve grande uso de processamento
+        , como é o caso de multiplicações matriciais.
+        
+            Utilizando multiprocessing, podemos criar varios processos, que são instâncias independentes de um programa em execução no sistema operacional,
+        isso implica que cada processo possui um endereço e espaço de memória e podem ser executados de forma paralela
+        
+            Cada prcesso pode ter uma ou mais threads'''
         if matriz1.get_ordem[1] != matriz2.get_ordem[0]:
             raise ValueError("Número de colunas da primeira matriz difere do numero de linhas da segunda")
         resultado = np.zeros((matriz1.get_ordem[0],matriz2.get_ordem[1]))
-        step = matriz1.get_ordem[0]//num_threads
+        step = matriz1.get_ordem[0]//num_processos
         
-        threads=[]
-        for i in range(num_threads):
+        processos=[]
+        for i in range(num_processos):
             row_start = i * step
-            row_end = (i+1)* step if i < num_threads -1 else matriz1.get_ordem[0]
-            thread = threading.Thread(target=self.multiplica,args=(matriz1,matriz2,resultado,row_start,row_end))
-            threads.append(thread)
-            thread.start()
-        for thread in threads:
-            thread.join()
+            row_end = (i+1)* step if i < num_processos -1 else matriz1.get_ordem[0]
+            processo = multiprocessing.Process(target=self.multiplica,args=(matriz1,matriz2,resultado,row_start,row_end))
+            processos.append(processo)
+            processo.start()
+        for processo in processos:
+            processo.join()
         
         return Matriz(*resultado)
 
 def criar_matriz_aleatoria():
-    return np.random.rand(500, 500)
+    return np.random.rand(1000, 1000)
 
 # Criar matrizes aleatórias 1000x1000
 matrizAlet1=criar_matriz_aleatoria()
@@ -118,10 +127,11 @@ matriz2 = Matriz(*matrizAlet2)
 # matriz1 = Matriz([1, 2], [4, 5])
 # matriz2 = Matriz([5, 6], [7, 8])
 
-num_threads = 1  # Número de threads a serem utilizadas
+num_processos = 10  # Número de processos a serem utilizadas
+
 calculadora = Calculo_Matriz(matriz1,matriz2)
 inicio = time.time()
-resultado = calculadora.multiplica_matrizes_threads(matriz1, matriz2, num_threads)
+resultado = calculadora.multiplica_matrizes_processos(matriz1, matriz2, num_processos)
 fim = time.time()
 
 
